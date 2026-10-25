@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>부산도서관 vs 울산도서관 대출 경향 분석 계획</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f7f3ea;
+    --paper-2: #efe8da;
+    --ink: #24211c;
+    --ink-2: #5b554b;
+    --line: #d9cfbd;
+    --busan: #2c5d8f;
+    --ulsan: #b25a2c;
+    --accent: #2f5d50;
+    --todo: #c0392b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #2a2723; overflow: hidden; }
+  body { font-family: "Noto Sans KR", sans-serif; color: var(--ink); }
+
+  .viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+  .stage { width: 1280px; height: 720px; position: relative; transform-origin: center center; }
+
+  .slide {
+    position: absolute; inset: 0; background: var(--paper);
+    padding: 72px 88px 64px; display: none; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .slide.active { display: flex; }
+  .slide::after {
+    content: ""; position: absolute; left: 88px; right: 88px; bottom: 40px;
+    border-top: 1px solid var(--line);
+  }
+
+  .kicker { font-size: 15px; font-weight: 700; letter-spacing: .12em; color: var(--accent); margin-bottom: 14px; }
+  h1 { font-family: "Noto Serif KR", serif; font-weight: 900; font-size: 60px; line-height: 1.25; }
+  h2 { font-family: "Noto Serif KR", serif; font-weight: 700; font-size: 40px; line-height: 1.3; margin-bottom: 36px; }
+  h3 { font-size: 21px; font-weight: 700; margin-bottom: 10px; }
+  p, li { font-size: 21px; line-height: 1.65; color: var(--ink-2); }
+  ul { list-style: none; }
+  ul li { padding-left: 22px; position: relative; margin-bottom: 10px; }
+  ul li::before { content: ""; position: absolute; left: 0; top: 15px; width: 8px; height: 8px; background: var(--accent); }
+  strong { color: var(--ink); font-weight: 700; }
+  .busan { color: var(--busan); } .ulsan { color: var(--ulsan); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: #fff; border: 1px solid var(--line); padding: 28px 30px; }
+  .card.b { border-top: 6px solid var(--busan); }
+  .card.u { border-top: 6px solid var(--ulsan); }
+  .card .num { font-family: "Noto Serif KR", serif; font-size: 38px; font-weight: 900; color: var(--accent); line-height: 1; margin-bottom: 14px; }
+  .card p, .card li { font-size: 18px; }
+
+  .todo {
+    border: 2px dashed var(--todo); color: var(--todo); background: #fff6f4;
+    padding: 18px 24px; font-size: 20px; font-weight: 500;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th { text-align: left; font-weight: 700; padding: 10px 14px; border-bottom: 2px solid var(--ink); }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--line); color: var(--ink-2); vertical-align: top; line-height: 1.5; }
+  td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
+
+  .timeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; margin-top: 12px; }
+  .step { border-top: 4px solid var(--line); padding: 18px 14px 0 0; }
+  .step.now { border-top-color: var(--todo); }
+  .step.next { border-top-color: var(--accent); }
+  .step .t { font-size: 14px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .step h3 { font-size: 19px; }
+  .step p { font-size: 15px; line-height: 1.55; }
+
+  .bar { display: flex; height: 40px; margin: 10px 0 6px; }
+  .bar span { display: block; height: 100%; }
+  .legend { font-size: 15px; color: var(--ink-2); }
+
+  .cover { justify-content: center; background: var(--paper-2); }
+  .cover .rule { width: 120px; height: 6px; background: var(--accent); margin: 30px 0; }
+  .cover .meta { font-size: 20px; color: var(--ink-2); line-height: 1.8; }
+
+  .question {
+    font-family: "Noto Serif KR", serif; font-size: 34px; font-weight: 700; line-height: 1.5;
+    border-left: 6px solid var(--accent); padding: 6px 0 6px 30px; margin-bottom: 40px; color: var(--ink);
+  }
+  .note { font-size: 16px; color: var(--ink-2); margin-top: auto; padding-top: 18px; }
+
+  .footer {
+    position: absolute; left: 88px; right: 88px; bottom: 14px;
+    display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2);
+  }
+
+  .nav {
+    position: fixed; right: 18px; bottom: 16px; display: flex; gap: 8px; z-index: 10;
+  }
+  .nav button {
+    width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12);
+    color: #fff; font-size: 20px; cursor: pointer;
+  }
+  .nav button:hover { background: rgba(255,255,255,.25); }
+
+  /* ---------- 이미지 ---------- */
+  .cover > :not(.cover-art):not(.footer) { position: relative; z-index: 1; max-width: 760px; }
+  .cover-art {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 46%; overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 38%), linear-gradient(to top, transparent 0, #000 120px);
+    -webkit-mask-composite: source-in;
+            mask-image: linear-gradient(to right, transparent 0, #000 38%), linear-gradient(to top, transparent 0, #000 120px);
+            mask-composite: intersect;
+  }
+  .cover-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-img { margin: -28px -30px 20px; height: 170px; overflow: hidden; background: var(--paper-2); }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* ---------- 애니메이션 ---------- */
+  @keyframes rise   { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes fade   { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes drift  { from { transform: scale(1.08) translateX(10px); } to { transform: scale(1) translateX(0); } }
+
+  .slide.active { animation: fade .45s ease both; }
+  .slide.active > :not(.footer):not(.cover-art) { animation: rise .6s cubic-bezier(.2,.7,.2,1) both; }
+  .slide.active > :nth-child(1) { animation-delay: .05s; }
+  .slide.active > :nth-child(2) { animation-delay: .15s; }
+  .slide.active > :nth-child(3) { animation-delay: .28s; }
+  .slide.active > :nth-child(4) { animation-delay: .40s; }
+  .slide.active > :nth-child(5) { animation-delay: .52s; }
+  .slide.active > :nth-child(6) { animation-delay: .64s; }
+  .slide.active > :nth-child(7) { animation-delay: .76s; }
+  .slide.active > :nth-child(8) { animation-delay: .88s; }
+
+  .slide.active .cover-art img { animation: drift 7s ease-out both; }
+  .slide.active .cover-art { animation: fade 1.2s ease .1s both; }
+  @keyframes zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+  .slide.active .card-img img { animation: zoom 6s ease-out .3s both; }
+  .card.b .card-img img { object-position: 50% 38%; }
+  .cover.active .rule { transform-origin: left; animation: grow-x .8s cubic-bezier(.2,.7,.2,1) .45s both; }
+
+  /* 카드 · 표 행 · 타임라인은 하나씩 순서대로 */
+  .slide.active .grid2 > *, .slide.active .grid3 > * { animation: rise .55s cubic-bezier(.2,.7,.2,1) both; }
+  .slide.active .grid2 > :nth-child(2), .slide.active .grid3 > :nth-child(2) { animation-delay: .45s; }
+  .slide.active .grid2 > :nth-child(1), .slide.active .grid3 > :nth-child(1) { animation-delay: .3s; }
+  .slide.active .grid3 > :nth-child(3) { animation-delay: .6s; }
+  .slide.active tr { animation: rise .45s ease both; }
+  .slide.active tr:nth-child(2) { animation-delay: .30s; }
+  .slide.active tr:nth-child(3) { animation-delay: .38s; }
+  .slide.active tr:nth-child(4) { animation-delay: .46s; }
+  .slide.active tr:nth-child(5) { animation-delay: .54s; }
+  .slide.active tr:nth-child(6) { animation-delay: .62s; }
+  .slide.active tr:nth-child(7) { animation-delay: .70s; }
+  .slide.active .step { animation: rise .5s ease both; }
+  .slide.active .step:nth-child(1) { animation-delay: .30s; }
+  .slide.active .step:nth-child(2) { animation-delay: .42s; }
+  .slide.active .step:nth-child(3) { animation-delay: .54s; }
+  .slide.active .step:nth-child(4) { animation-delay: .66s; }
+  .slide.active .step:nth-child(5) { animation-delay: .78s; }
+  .slide.active .step:nth-child(6) { animation-delay: .90s; }
+  .step.now { position: relative; }
+  .step.now::before {
+    content: ""; position: absolute; top: -8px; left: 0; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--todo); animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
+
+  /* 구상 막대: 왼쪽에서 자라남 */
+  .slide.active .bar { transform-origin: left; animation: grow-x .9s cubic-bezier(.2,.7,.2,1) .4s both; }
+  .slide.active .bar ~ .bar { animation-delay: .6s; }
+
+  /* 상단 진행 막대 */
+  .progress { position: absolute; left: 0; top: 0; height: 4px; background: var(--accent); z-index: 5; transition: width .5s cubic-bezier(.2,.7,.2,1); }
+
+  .card { transition: transform .2s ease, box-shadow .2s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(36,33,28,.10); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  @media print {
+    *, *::before, *::after { animation: none !important; }
+    html, body { background: #fff; overflow: visible; height: auto; }
+    .viewport { position: static; display: block; }
+    .stage { transform: none !important; width: 1280px; height: auto; }
+    .slide { display: flex !important; position: relative; height: 720px; page-break-after: always; box-shadow: none; }
+    .nav, .progress { display: none; }
+  }
+  @page { size: 1280px 720px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="viewport">
+<div class="stage" id="stage">
+
+  <!-- 1. 표지 -->
+  <section class="slide cover">
+    <div class="kicker">데이터리터러시의이해 · 중간고사 대체 과제</div>
+    <h1><span class="busan">부산도서관</span>과 <span class="ulsan">울산도서관</span>,<br>무엇을 빌려 읽는가</h1>
+    <div class="rule"></div>
+    <div class="meta">
+      도서관 정보나루 장서/대출 데이터를 활용한 대출 경향 비교 · 분석 계획<br>
+      문헌정보학과 202306193 곽민진
+    </div>
+    <div class="cover-art"><img src="assets/cover.jpg" alt="" onerror="this.parentNode.remove()"></div>
+  </section>
+
+  <!-- 2. 연구 질문 -->
+  <section class="slide">
+    <div class="kicker">01 · 연구 질문</div>
+    <h2>무엇을 알고 싶은가</h2>
+    <div class="question">
+      부산도서관의 대출 경향(인기 분야)은<br>울산도서관과 비교해 어떻게 다른가?
+    </div>
+    <div class="grid2">
+      <div class="card u">
+        <h3>가설 1</h3>
+        <p><strong class="ulsan">울산도서관</strong>은 부산도서관보다 <strong>공업 관련 분야</strong>(KDC 550 기계공학 · 570 화학공학 · 580 제조업)의 대출 비중이 높을 것이다.</p>
+        <p style="font-size:16px;margin-top:10px">근거: 울산은 자동차 · 조선 · 석유화학 중심의 제조업 도시</p>
+      </div>
+      <div class="card b">
+        <h3>가설 2</h3>
+        <p><strong class="busan">부산도서관</strong>은 울산도서관보다 <strong>의학 · 건강 분야</strong>(KDC 510 의학)의 대출 비중이 높을 것이다.</p>
+        <p style="font-size:16px;margin-top:10px">근거: 부산은 청년층 유출로 고령층 비중이 높고, 60세 이상은 20 · 30대보다 의학 · 건강 도서를 많이 빌림</p>
+      </div>
+    </div>
+    <p class="note">두 가설 모두 <strong>일반 도서(아동 도서 제외)</strong> 기준</p>
+  </section>
+
+  <!-- 2-1. 가설 근거 -->
+  <section class="slide">
+    <div class="kicker">01 · 가설의 근거</div>
+    <h2>연령대별 인기대출도서로 미리 확인하기</h2>
+    <table>
+      <tr><th>분야 (아동 도서 제외)</th><th>60세 이상</th><th>20 · 30대</th><th>판단</th></tr>
+      <tr><td>810 한국문학</td><td>55.1%</td><td>58.9%</td><td>고령층이 더 높지 않음 → <strong>처음 세운 가설 기각</strong></td></tr>
+      <tr><td>510 의학 (건강)</td><td><strong>4.3%</strong></td><td>0.5%</td><td>60세 이상이 약 8배 → <strong>가설 2의 근거로 채택</strong></td></tr>
+    </table>
+    <div class="grid2" style="margin-top:30px">
+      <div>
+        <h3>처음 가설은 왜 바뀌었나</h3>
+        <p style="font-size:18px">"고령층은 한국문학을 많이 빌린다"를 근거로 삼으려 했지만, 비교해 보니 20 · 30대의 한국문학 비중이 더 높았음. 다른 연령과 <strong>비교하지 않으면 근거가 될 수 없다</strong>는 점을 확인.</p>
+      </div>
+      <div>
+        <h3>이 근거의 한계</h3>
+        <p style="font-size:18px">각 연령대 상위 200권만 본 결과이고, 510 분야는 60세 이상 목록에서 9권뿐이라 표본이 작음. 실제 분석에서 두 도서관 전체 장서로 다시 확인.</p>
+      </div>
+    </div>
+    <p class="note">자료: 도서관 정보나루 인기대출도서 (2026.01.01 ~ 10.24, 전국, 연령별 상위 200권, 대출건수 기준 비중) · ISBN 부가기호 첫 자리 7(아동) 제외</p>
+  </section>
+
+  <!-- 3. 비교 대상 -->
+  <section class="slide">
+    <div class="kicker">02 · 비교 대상</div>
+    <h2>왜 이 두 도서관인가</h2>
+    <div class="grid2" style="margin-bottom:32px">
+      <div class="card b">
+        <div class="card-img"><img src="assets/busan.jpg" alt="" onerror="this.parentNode.remove()"></div>
+        <h3 class="busan">부산도서관</h3>
+        <p>부산광역시 대표도서관</p>
+      </div>
+      <div class="card u">
+        <div class="card-img"><img src="assets/ulsan.jpg" alt="" onerror="this.parentNode.remove()"></div>
+        <h3 class="ulsan">울산도서관</h3>
+        <p>울산광역시 대표도서관</p>
+      </div>
+    </div>
+    <ul>
+      <li>서로 <strong>인접한 두 광역시</strong>의 대출 경향이 어떻게 다른지 비교</li>
+      <li>둘 다 각 시를 대표하는 도서관이라 <strong>역할이 비슷한 기관끼리</strong> 비교할 수 있음</li>
+    </ul>
+  </section>
+
+  <!-- 4. 데이터 소개 -->
+  <section class="slide">
+    <div class="kicker">03 · 데이터</div>
+    <h2>도서관 정보나루 「장서/대출 목록」</h2>
+    <table>
+      <tr><th>항목</th><th>내용</th></tr>
+      <tr><td>제공</td><td>국립중앙도서관 도서관 정보나루 (data4library.kr), 오픈 API</td></tr>
+      <tr><td>내용</td><td>도서관별 월별 전체 장서 목록과 대출 빈도</td></tr>
+      <tr><td>수록 기간</td><td><span class="busan">부산 2021.05 ~ 2026.09</span> · <span class="ulsan">울산 2020.02 ~ 2026.09</span></td></tr>
+      <tr><td>분석 기간</td><td><strong>2021.05 ~ 2026.09</strong> — 두 도서관이 겹치는 기간만 사용</td></tr>
+      <tr><td>주요 항목 (예정)</td><td>도서명, 저자, 출판사, 발행년도, ISBN, 부가기호, 주제분류번호(KDC), 대출건수 — API 응답으로 확인 예정</td></tr>
+      <tr><td>갱신 · 조건</td><td>월 1회 갱신 · ISBN 없는 장서 제외 · 저작자표시(BY)</td></tr>
+    </table>
+  </section>
+
+  <!-- 5. 분석 방법 -->
+  <section class="slide">
+    <div class="kicker">04 · 분석 방법</div>
+    <h2>세 가지 지표로 비교</h2>
+    <div class="grid3">
+      <div class="card">
+        <div class="num">①</div>
+        <h3>대출 규모</h3>
+        <p>전체 대출건수와 함께 <strong>장서 1권당 대출건수</strong>(장서 회전율)를 계산해 도서관 크기 차이를 보정</p>
+      </div>
+      <div class="card">
+        <div class="num">②</div>
+        <h3>주제별 대출 비중</h3>
+        <p>KDC 주류(000~900) 별로 전체 대출 중 몇 %를 차지하는지 → <strong>많이 빌려가는 분야</strong></p>
+      </div>
+      <div class="card">
+        <div class="num">③</div>
+        <h3>소장 분야 비중</h3>
+        <p>KDC 주류 별로 전체 장서 중 몇 %를 차지하는지 → <strong>많이 가진 분야</strong></p>
+      </div>
+    </div>
+    <p style="margin-top:30px"><strong>②와 ③을 나란히 비교</strong>해 "많이 가진 분야"와 "많이 빌려가는 분야"가 일치하는지 확인합니다. 대출 비중이 장서 비중보다 크면 그 분야는 가진 것보다 많이 이용되는 분야입니다.</p>
+    <p style="margin-top:14px;font-size:18px">가설 확인은 강목 단위로: 가설 1은 <strong>550 · 570 · 580</strong>, 가설 2는 <strong>510</strong>. 조선(선박공학)은 550 안(559 기타공학)에 속하는지 실제 도서의 분류번호로 확인하고, 516 산부인과 · 소아과는 젊은 가구 영향이 있을 수 있어 따로 살펴봅니다.</p>
+  </section>
+
+  <!-- 6. 시각화 예시 (구상) -->
+  <section class="slide">
+    <div class="kicker">04 · 분석 방법</div>
+    <h2>결과는 이런 모습으로 보여줄 예정</h2>
+    <p style="margin-bottom:6px"><strong>주제별 비중 막대 비교 (구상 예시 — 실제 데이터 아님)</strong></p>
+    <div class="legend">부산도서관 · 장서 비중</div>
+    <div class="bar">
+      <span style="width:8%;background:#c9c2b4"></span><span style="width:6%;background:#b9b1a2"></span><span style="width:4%;background:#a99f8e"></span><span style="width:14%;background:#8d8473"></span><span style="width:6%;background:#7c8f86"></span><span style="width:8%;background:#5f7d72"></span><span style="width:6%;background:#4b6b60"></span><span style="width:5%;background:#3a5a4f"></span><span style="width:33%;background:var(--busan)"></span><span style="width:10%;background:#6f6658"></span>
+    </div>
+    <div class="legend">부산도서관 · 대출 비중</div>
+    <div class="bar">
+      <span style="width:6%;background:#c9c2b4"></span><span style="width:7%;background:#b9b1a2"></span><span style="width:2%;background:#a99f8e"></span><span style="width:11%;background:#8d8473"></span><span style="width:3%;background:#7c8f86"></span><span style="width:9%;background:#5f7d72"></span><span style="width:4%;background:#4b6b60"></span><span style="width:3%;background:#3a5a4f"></span><span style="width:46%;background:var(--busan)"></span><span style="width:9%;background:#6f6658"></span>
+    </div>
+    <p class="legend" style="margin-top:4px">왼쪽부터 KDC 000 총류 … 800 문학 … 900 역사 · 같은 형식으로 울산도서관도 그려 나란히 비교</p>
+    <ul style="margin-top:26px">
+      <li>두 도서관의 <strong>대출 비중 차이</strong>가 큰 분야 순위표</li>
+      <li>월별 대출건수 추이 선 그래프 (계절 · 방학 영향 확인)</li>
+    </ul>
+  </section>
+
+  <!-- 7. 정제 계획 -->
+  <section class="slide">
+    <div class="kicker">05 · 정제 계획</div>
+    <h2>예상되는 문제와 처리 규칙</h2>
+    <table>
+      <tr><th>예상 문제</th><th>예시</th><th>처리 계획</th></tr>
+      <tr><td>분류번호 표기 혼재</td><td>"813.6", "813.6-ㄱ123", "813"</td><td>앞 세 자리 숫자만 추출 → 첫 자리로 KDC 주류 구분</td></tr>
+      <tr><td>분류번호 결측</td><td>빈칸, 숫자가 아닌 값</td><td>지우지 않고 "미분류"로 따로 집계, 비율을 함께 보고</td></tr>
+      <tr><td>같은 책이 여러 행</td><td>복본, 권차(1권 · 2권)</td><td>ISBN과 권 정보를 보고 같은 자료인지 판단 → 규칙을 정해 일관 적용</td></tr>
+      <tr><td>대출건수의 의미</td><td>월별 값인지 누적 값인지</td><td>API 응답과 설명을 확인 후 계산 방식 결정 (누적이면 등록 시기 고려)</td></tr>
+      <tr><td>아동 도서 혼입</td><td>창작동화도 813(한국소설)로 분류</td><td>ISBN 부가기호 첫 자리 7(아동)은 제외하고 일반 도서만 비교</td></tr>
+      <tr><td>기간 불일치</td><td>울산만 2020.02부터 존재</td><td>2021.05 ~ 2026.09 공통 기간만 사용</td></tr>
+    </table>
+    <p class="note">모든 처리는 <strong>정제 로그</strong>에 기록 — 무엇을 · 왜 · 몇 행에 적용했는지</p>
+  </section>
+
+  <!-- 8. 한계 -->
+  <section class="slide">
+    <div class="kicker">06 · 데이터의 한계</div>
+    <h2>이 분석으로 말할 수 없는 것</h2>
+    <div class="grid2">
+      <div>
+        <h3>데이터 범위의 한계</h3>
+        <ul>
+          <li><strong>ISBN 없는 자료는 빠짐</strong> — 오래된 책, 비도서 자료 등은 실제 장서에 있어도 분석에서 제외</li>
+          <li><strong>누가 빌렸는지 모름</strong> — 연령 · 성별 등 이용자 정보가 없어 이용자 특성과 연결 불가</li>
+        </ul>
+      </div>
+      <div>
+        <h3>해석의 한계</h3>
+        <ul>
+          <li><strong>도서관 한 곳 ≠ 지역 전체</strong> — 부산도서관의 경향을 부산 시민 전체의 독서 경향으로 일반화할 수 없음</li>
+          <li><strong>차이의 원인은 단정 불가</strong> — 지역 특성 때문인지, 장서 구성 · 도서관 위치 때문인지는 이 데이터만으로 구분 어려움</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. 일정 -->
+  <section class="slide">
+    <div class="kicker">07 · 진행 계획</div>
+    <h2>다음 단계</h2>
+    <div class="timeline">
+      <div class="step now"><div class="t">현재</div><h3>API 승인 대기</h3><p>인증키 신청 완료, 승인 후 수집 시작</p></div>
+      <div class="step next"><div class="t">1단계</div><h3>수집</h3><p>두 도서관 공통 기간 장서/대출 데이터</p></div>
+      <div class="step next"><div class="t">2단계</div><h3>살펴보기</h3><p>행 · 열 구성, 결측치, 중복 확인</p></div>
+      <div class="step next"><div class="t">3단계</div><h3>정제</h3><p>정제 규칙 적용 · 로그 기록</p></div>
+      <div class="step next"><div class="t">4단계</div><h3>분석 · 시각화</h3><p>세 지표 계산, 비교 그래프</p></div>
+      <div class="step next"><div class="t">5단계</div><h3>결과 추가</h3><p>이 슬라이드에 분석 결과 반영</p></div>
+    </div>
+  </section>
+
+  <!-- 10. 출처 -->
+  <section class="slide">
+    <div class="kicker">출처</div>
+    <h2>데이터 출처</h2>
+    <ul>
+      <li>국립중앙도서관 도서관 정보나루, 「부산도서관 장서/대출 목록」, data4library.kr</li>
+      <li>국립중앙도서관 도서관 정보나루, 「울산도서관 장서/대출 목록」, data4library.kr</li>
+      <li>국립중앙도서관 도서관 정보나루, 「인기대출도서」 60세 이상 · 20대 · 30대 (2026.01.01 ~ 10.24, 전국), data4library.kr</li>
+      <li>이용허락조건: 저작자표시(BY)</li>
+    </ul>
+  </section>
+
+</div>
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="이전">‹</button>
+  <button id="next" aria-label="다음">›</button>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const total = slides.length;
+  slides.forEach((s, i) => {
+    const f = document.createElement('div');
+    f.className = 'footer';
+    f.innerHTML = '<span>부산도서관 vs 울산도서관 · 대출 경향 분석 계획</span><span>' + (i + 1) + ' / ' + total + '</span>';
+    s.appendChild(f);
+  });
+
+  const progress = document.createElement('div');
+  progress.className = 'progress';
+  document.getElementById('stage').appendChild(progress);
+
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1)) - 1 || 0, 0), total - 1);
+  function show(n) {
+    cur = Math.min(Math.max(n, 0), total - 1);
+    slides.forEach((s, i) => s.classList.toggle('active', i === cur));
+    progress.style.width = ((cur + 1) / total * 100) + '%';
+    history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function fit() {
+    const s = Math.min(innerWidth / 1280, innerHeight / 720) * 0.96;
+    document.getElementById('stage').style.transform = 'scale(' + s + ')';
+  }
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(total - 1);
+  });
+  document.getElementById('prev').onclick = () => show(cur - 1);
+  document.getElementById('next').onclick = () => show(cur + 1);
+  let tx = null;
+  addEventListener('touchstart', e => tx = e.touches[0].clientX);
+  addEventListener('touchend', e => {
+    if (tx === null) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 40) show(cur + (dx < 0 ? 1 : -1));
+    tx = null;
+  });
+  addEventListener('resize', fit);
+  fit(); show(cur);
+</script>
+</body>
+</html>
